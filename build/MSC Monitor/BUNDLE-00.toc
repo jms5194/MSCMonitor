@@ -1,0 +1,3 @@
+([('MSC Monitor',
+   '/Users/justinstasiw/PycharmProjects/MSCMonitor/dist/MSC Monitor',
+   'EXECUTABLE')],)
