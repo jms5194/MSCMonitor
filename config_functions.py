@@ -2,6 +2,8 @@ import appdirs
 import os.path
 import configparser
 from configupdater import ConfigUpdater
+import settings
+
 
 def where_to_put_user_data():
     # Find a home for our preferences file
@@ -28,12 +30,13 @@ def check_configuration(ini_prefs_path):
         print(e)
         build_initial_ini(ini_prefs_path)
 
+
 def build_initial_ini(ini_prefs_path):
     # Builds a .ini configuration file with default settings.
     # What should our defaults be? All zeros? Something technically valid?
     config = configparser.ConfigParser()
     config["main"] = {}
-    config["main"]["last_interface"] = None
+    config["main"]["last_interface"] = ""
     config["main"]["window_size_x"] = "900"
     config["main"]["window_size_y"] = "300"
     config["main"]["window_pos_x"] = "400"
@@ -43,11 +46,11 @@ def build_initial_ini(ini_prefs_path):
         config.write(configfile)
     set_vars_from_pref(config)
 
+
 def set_vars_from_pref(config_file_loc):
     # Bring in the vars to fill out settings.py from the preferences file
     config = configparser.ConfigParser()
     config.read(config_file_loc)
     settings.last_interface = config["main"]["last_interface"]
-    settings.window_size = (int(config["main"]["window_size_x"]), int(config["main"]["window_size_y"])
+    settings.window_size = (int(config["main"]["window_size_x"]), int(config["main"]["window_size_y"]))
     settings.window_loc = (int(config["main"]["window_pos_x"]), int(config["main"]["window_pos_y"]))
-

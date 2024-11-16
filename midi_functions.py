@@ -2,6 +2,7 @@ from pubsub import pub
 import mido
 import constants
 from datetime import datetime
+
 mido.set_backend('mido.backends.rtmidi')
 
 midi_in = None
@@ -110,4 +111,3 @@ def MSC_translator(msg):
         timestamp_str = current_time.strftime("%d-%b-%Y (%H:%M:%S)")
         msg_to_snd = timestamp_str + ":   Device ID:" + device_id + "   Command Format:" + command_format + "   Command Type:" + command_type + "   Cue Number:" + cue_number + "   Cue List:" + cue_list + "   Cue Path:" + cue_path
         pub.sendMessage('logUpdates', msg=msg_to_snd)
-
