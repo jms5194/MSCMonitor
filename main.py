@@ -158,16 +158,6 @@ class MSCPrintoutGUI(wx.Frame):
         except ValueError as e:
             print(e)
 
-    def get_data(self, event):
-        pass
-        #count = self.list_ctrl.GetItemCount()
-        #cols = self.list_ctrl.GetColumnCount()
-        #for row in range(count):
-            #for col in range(cols):
-                #item = self.list_ctrl.GetItem(itemId=row, col=col)
-                #print(item.GetText())
-
-
 if __name__ == "__main__":
     app = wx.App()
     frame = MSCPrintoutGUI()

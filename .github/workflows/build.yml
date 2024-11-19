@@ -1,0 +1,176 @@
+name: Cross-Platform Build with PyInstaller
+
+# Call when commit is tagged with v*
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  # Creates a release in Github
+  create_release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          generate_release_notes: false
+
+  build:
+    # When create_release is finished
+    needs: create_release
+    strategy:
+      matrix:
+        # Building for Mac silicon, Mac Intel, and Windows
+        os: [macos-x86, macos-arm64, windows-latest]
+        include:
+          - os: macos-x86
+            python-version: '3.12'
+            target: macos-x86
+            runs-on: macos-13
+          - os: macos-arm64
+            python-version: '3.12'
+            target: macos-arm64
+            runs-on: macos-latest
+          - os: windows-latest
+            python-version: '3.12'
+            target: windows
+            runs-on: windows-latest
+    # Run the build on all of the matrix of systems above
+    runs-on: ${{ matrix.runs-on }}
+
+    steps:
+      # Checkout the project from Github
+      - uses: actions/checkout@v4
+      # Get python installed on the runner
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      # Upgrade Pip and install dependencies
+      - name: Install dependencies
+        run: |
+          python - pip install --upgrade pip
+          python -m pip install -r requirements.txt
+      # Bring in our apple certificate to the keychain of the runner
+      - name: Import Apple Certificate
+        if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
+        run: |
+          if security list-keychains | grep -q "github_build.keychain"; then
+            security delete-keychain github_build.keychain
+          fi
+          security create-keychain -p "" github_build.keychain
+          security default-keychain -s github_build.keychain
+          security set-keychain-settings -lut 21600 github_build.keychain
+          echo "${{ secrets.APPLE_CERTIFICATE }}" | base64 --decode > apple_certificate.p12
+          security import apple_certificate.p12 -k github_build.keychain -P "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}" \
+            -t cert -f pkcs12 -T /usr/bin/codesign -T /usr/bin/security -T /usr/bin/xcrun
+          security unlock-keychain -p "" github_build.keychain
+          security set-key-partition-list -S 'apple-tool:,apple:' -s -k "" github_build.keychain
+          security list-keychain -d user -s github_build.keychain 'login-keychain'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+      - name: Unlock keychain on Mac
+        if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
+        run: |
+          security unlock-keychain -p "" github_build.keychain
+          security set-key-partition-list -S apple-tool:,apple: -k "" -D "Developer" -t private github_build.keychain
+
+      - name: List available signing identities
+        if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
+        run: |
+          security find-identity -v -p codesigning
+
+      # write a .env file with the secrets
+      - name: Write .env file Mac & Linux
+        if: matrix.os != 'windows-latest'
+        run: |
+          echo "LOCAL_RELEASE_TAG=${GITHUB_REF_NAME}" >> .env
+          echo "LOCAL_RELEASE_DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")" >> .env
+
+      - name: Write .env file Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          @"
+          LOCAL_RELEASE_TAG=$env:GITHUB_REF_NAME
+          LOCAL_RELEASE_DATE=$(Get-Date -Format 'yyyy-MM-ddTHH:mm:ssZ')
+          "@ | Out-File -FilePath .env -Encoding ASCII
+        shell: pwsh
+      # Build app with Pyinstaller on Mac
+      - name: Build with PyInstaller (MacOS)
+        if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
+        run: |
+          pyinstaller --clean --noconfirm MSCMonitor.spec -- --mac_osx
+        env:
+          APPLE_APP_DEVELOPER_ID: ${{ secrets.APPLE_APP_DEVELOPER_ID }}
+      # Build app with Pyinstaller on Windows
+      - name: Build with PyInstaller (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          if ("${{ github.event_name }}" -eq "pull_request") {
+            pyinstaller --clean --noconfirm MSCMonitor.spec -- --win --debug
+          } else {
+            pyinstaller --clean --noconfirm MSCMonitor.spec -- --win
+          }
+
+      - name: Zip Application for Notarization
+        if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
+        run: |
+          ditto -c -k --keepParent "dist/MSC Monitor.app" "MSC Monitor.zip"
+      # Send the application zip to Apple for Notarization and stapling
+      - name: Notarize and Staple
+        if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
+        run: |
+          xcrun notarytool submit "MSC Monitor.zip" --apple-id \
+            "${{ secrets.APPLE_DEVELOPER_ID_USER }}" --password \
+            "${{ secrets.APPLE_DEVELOPER_ID_PASSWORD }}" --team-id \
+            "${{ secrets.APPLE_DEVELOPER_ID_TEAM }}" --wait --verbose
+          chmod 755 "dist/MSC Monitor.app"
+          xcrun stapler staple "dist/MSC Monitor.app"
+
+      - name: Verify Notarization
+        if: (matrix.os == 'macos-x86' || matrix.os == 'macos-arm64')
+        run: |
+          spctl -a -v "dist/MSC Monitor.app"
+          rm "MSC Monitor.zip"
+      # Build an installer DMG for MacOS
+      - name: Create dmg MacOS
+        if: matrix.os == 'macos-x86' || matrix.os == 'macos-arm64'
+        run: |
+          chmod a+x "dist/MSC Monitor.app"
+          brew update
+          brew upgrade
+          brew install create-dmg
+          create-dmg \
+          --volname "MSC Monitor Installer" \
+          --app-drop-link 600 185 \
+          --window-pos 200 120 \
+          --window-size 800 400 \
+          --hide-extension "MSC Monitor.app" \
+          "MSC Monitor Installer"-${{ matrix.target }}.dmg \
+          "dist/MSC Monitor.app"
+      # Zip the windows applications
+      - name: Create zip on Windows
+        if: matrix.os == 'windows-latest'
+        run: |
+          Compress-Archive -Path "dist/MSC Monitor.exe" -DestinationPath "./MSC Monitor-win.zip"
+        shell: pwsh
+      # Add the built binaries to the release
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.create_release.outputs.tag-name }}
+          files: |
+            MSC\ Monitor\ Installer-macos-arm64.dmg
+            MSC\ Monitor\ Installer-macos-x86.dmg
+            MSC\ Monitor-win.zip
