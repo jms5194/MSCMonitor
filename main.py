@@ -91,7 +91,7 @@ class MSCPrintoutGUI(wx.Frame):
         wx.CallAfter(self.Msg_Panel.SetItem, self.log_index, 6, msg[6])
         wx.CallAfter(self.Msg_Panel.EnsureVisible, self.log_index)
         if self.log_index > 0:
-            wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, self.log_index, (0,255,0,100))
+            wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, self.log_index, (16,32,240,100))
             wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, (self.log_index - 1), wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW))
         self.log_index += 1
 
