@@ -11,9 +11,9 @@ midi_in = None
 
 def available_midi_ports():
     pub.subscribe(available_midi_ports, 'refreshInterfaces')
+    pub.subscribe(open_midi_port, "chosenPort")
     available_ports = list(dict.fromkeys(mido.get_input_names()))
     pub.sendMessage('availablePorts', choices=available_ports)
-    pub.subscribe(open_midi_port, "chosenPort")
 
 
 def open_midi_port(port_to_open):

@@ -114,9 +114,16 @@ class MSCPrintoutGUI(wx.Frame):
         self.Midi_Selector.Append("\n")
         self.Midi_Selector.Append(choices)
         self.midi_choices = [""] + choices
+        if settings.last_interface in self.midi_choices:
+            self.Midi_Selector.SetSelection(self.midi_choices.index(settings.last_interface))
+            print(settings.last_interface)
+            pub.sendMessage('chosenPort', port_to_open=settings.last_interface)
 
     def update_interfaces(self, event):
         chosen_port = self.midi_choices[event.Selection]
+        print(chosen_port)
+        config_functions.update_last_interface_in_config(chosen_port,
+                                                         config_functions.where_to_put_user_data())
         pub.sendMessage('chosenPort', port_to_open=chosen_port)
 
     def on_clicked(self, event):

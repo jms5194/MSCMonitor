@@ -67,6 +67,15 @@ def update_pos_in_config(win_pos_tuple, ini_prefs_path):
         print(e)
     updater.update_file()
 
+def update_last_interface_in_config(last_interface, ini_prefs_path):
+    updater = ConfigUpdater()
+    updater.read(ini_prefs_path)
+    try:
+        updater["main"]["last_interface"] = last_interface
+    except Exception as e:
+        print(e)
+    updater.update_file()
+
 
 def update_size_in_config(win_size_tuple, ini_prefs_path):
     # Receives the position of the window from the UI and stores it in the preferences file
