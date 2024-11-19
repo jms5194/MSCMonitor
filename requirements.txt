@@ -1,4 +1,8 @@
-mido~=1.2.10
-wxPython~=4.1.1
-Pypubsub~=4.0.3
-python-rtmidi~=1.4.9
+mido==1.3.3
+packaging==24.2
+Pypubsub==4.0.3
+python-rtmidi==1.5.8
+six==1.16.0
+wxPython==4.2.2
+appdirs~=1.4.4
+ConfigUpdater~=3.2
