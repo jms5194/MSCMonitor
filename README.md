@@ -12,4 +12,4 @@ Use is pretty self-explanatory, select the interface you would like to monitor a
 
 If this software has been useful to you, consider making a donation via the github sponsors system below:
 
-[![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/<jms5194>)
+[![](https://img.shields.io/static/v1?label=Sponsor&message=%E2%9D%A4&logo=GitHub&color=%23fe8e86)](https://github.com/sponsors/jms5194)
