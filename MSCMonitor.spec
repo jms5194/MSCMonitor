@@ -14,8 +14,8 @@ args = parser.parse_args()
 
 datas = [
     ('.env', '.'),
-    ('resources/rprdigi.icns', './resources'),
-    ('resources/rprdigi.ico', './resources'),
+    ('resources/MSCLogo.icns', './resources'),
+    ('resources/MSCLogo.ico', './resources'),
 ]
 
 
