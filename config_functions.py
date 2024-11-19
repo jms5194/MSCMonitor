@@ -44,7 +44,7 @@ def build_initial_ini(ini_prefs_path):
 
     with open(ini_prefs_path, "w") as configfile:
         config.write(configfile)
-    set_vars_from_pref(config)
+    set_vars_from_pref(ini_prefs_path)
 
 
 def set_vars_from_pref(config_file_loc):
@@ -54,3 +54,25 @@ def set_vars_from_pref(config_file_loc):
     settings.last_interface = config["main"]["last_interface"]
     settings.window_size = (int(config["main"]["window_size_x"]), int(config["main"]["window_size_y"]))
     settings.window_loc = (int(config["main"]["window_pos_x"]), int(config["main"]["window_pos_y"]))
+
+def update_pos_in_config(win_pos_tuple, ini_prefs_path):
+    # Receives the position of the window from the UI and stores it in the preferences file
+    updater = ConfigUpdater()
+    updater.read(ini_prefs_path)
+    try:
+        updater["main"]["window_pos_x"] = str(win_pos_tuple[0])
+        updater["main"]["window_pos_y"] = str(win_pos_tuple[1])
+    except Exception as e:
+        print(e)
+    updater.update_file()
+
+def update_size_in_config(win_size_tuple, ini_prefs_path):
+    # Receives the position of the window from the UI and stores it in the preferences file
+    updater = ConfigUpdater()
+    updater.read(ini_prefs_path)
+    try:
+        updater["main"]["window_size_x"] = str(win_size_tuple[0])
+        updater["main"]["window_size_y"] = str(win_size_tuple[1])
+    except Exception as e:
+        print(e)
+    updater.update_file()

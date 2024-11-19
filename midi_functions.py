@@ -2,6 +2,7 @@ from pubsub import pub
 import mido
 import constants
 from datetime import datetime
+import mido.backends.rtmidi
 
 mido.set_backend('mido.backends.rtmidi')
 
@@ -64,15 +65,15 @@ def MSC_translator(msg):
             res = [remaining_data]
         try:
             cue_number_data = res[0]
-        except:
+        except IndexError:
             cue_number_data = ""
         try:
             cue_list_data = res[1]
-        except:
+        except IndexError:
             cue_list_data = ""
         try:
             cue_path_data = res[2]
-        except:
+        except IndexError:
             cue_path_data = ""
         cue_number_hex = ""
         try:
@@ -94,7 +95,8 @@ def MSC_translator(msg):
                 cue_list = cue_list_bytes.decode("ASCII")
             else:
                 cue_list = ""
-        except:
+        except Exception as e:
+            print(e)
             cue_list = ""
         cue_path_hex = ""
         try:
@@ -109,5 +111,6 @@ def MSC_translator(msg):
             cue_path = ""
         current_time = datetime.now()
         timestamp_str = current_time.strftime("%d-%b-%Y (%H:%M:%S)")
-        msg_to_snd = timestamp_str + ":   Device ID:" + device_id + "   Command Format:" + command_format + "   Command Type:" + command_type + "   Cue Number:" + cue_number + "   Cue List:" + cue_list + "   Cue Path:" + cue_path
+
+        msg_to_snd = [timestamp_str, device_id, command_format, command_type, cue_number, cue_list, cue_path]
         pub.sendMessage('logUpdates', msg=msg_to_snd)
