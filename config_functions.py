@@ -55,6 +55,7 @@ def set_vars_from_pref(config_file_loc):
     settings.window_size = (int(config["main"]["window_size_x"]), int(config["main"]["window_size_y"]))
     settings.window_loc = (int(config["main"]["window_pos_x"]), int(config["main"]["window_pos_y"]))
 
+
 def update_pos_in_config(win_pos_tuple, ini_prefs_path):
     # Receives the position of the window from the UI and stores it in the preferences file
     updater = ConfigUpdater()
@@ -65,6 +66,7 @@ def update_pos_in_config(win_pos_tuple, ini_prefs_path):
     except Exception as e:
         print(e)
     updater.update_file()
+
 
 def update_size_in_config(win_size_tuple, ini_prefs_path):
     # Receives the position of the window from the UI and stores it in the preferences file

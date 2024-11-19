@@ -4,7 +4,7 @@
 """MSC Monitor"""
 
 __author__ = "Justin Stasiw"
-__version__ = "$Revision 1.0$"
+__version__ = "$Revision 2.0$"
 __date__ = "$Date: 2024/11/16"
 
 from pubsub import pub
@@ -18,7 +18,9 @@ import settings
 class MSCPrintoutGUI(wx.Frame):
     def __init__(self):
         super().__init__(parent=None, title="MSC Monitor")
+        # Check for .ini file and populate settings.py with stored variables
         config_functions.check_configuration(config_functions.where_to_put_user_data())
+        # Set Position and size of window based upon stored location
         self.SetPosition(settings.window_loc)
         self.SetSize(settings.window_size)
         panel = wx.Panel(self)
@@ -35,7 +37,7 @@ class MSCPrintoutGUI(wx.Frame):
         self.Midi_Selector = wx.Choice(panel)
         interface_sizer.Add(self.Midi_Selector, 1, wx.ALL | wx.EXPAND, 5)
 
-        # Log Window- New Version with wx.ListCtrl
+        # Log Window
         self.Msg_Panel = wx.ListCtrl(panel, size=(-1, 150), style=wx.LC_REPORT | wx.BORDER_SUNKEN)
         self.Msg_Panel.InsertColumn(0, "Timestamp", width=160, format=wx.LIST_FORMAT_CENTRE)
         self.Msg_Panel.InsertColumn(1, "Device ID", format=wx.LIST_FORMAT_CENTRE)
@@ -45,10 +47,15 @@ class MSCPrintoutGUI(wx.Frame):
         self.Msg_Panel.InsertColumn(5, "Cue List", width=100, format=wx.LIST_FORMAT_CENTRE)
         self.Msg_Panel.InsertColumn(6, "Cue Path", width=100, format=wx.LIST_FORMAT_CENTRE)
 
-
         panel_sizer.Add(self.Msg_Panel, 1, wx.ALL | wx.EXPAND, 5)
-        clear_contents = wx.Button(panel, -1, "Clear MSC Log")
-        panel_sizer.Add(clear_contents, 0, wx.ALL | wx.EXPAND, 5)
+        # Clear log button
+        button_grid = wx.GridSizer(1, 2, 10, 10)
+        # Clear Contents button
+        clear_contents = wx.Button(panel, label="Clear MSC Log")
+        button_grid.Add(clear_contents, flag=wx.ALIGN_CENTER_HORIZONTAL)
+        save_as_log = wx.Button(panel, label="Save Log As...")
+        button_grid.Add(save_as_log, flag=wx.ALIGN_CENTER_HORIZONTAL)
+        panel_sizer.Add(button_grid, 0, wx.ALL | wx.EXPAND, 5)
         panel.SetSizer(panel_sizer)
 
         filemenu = wx.Menu()
@@ -60,16 +67,20 @@ class MSCPrintoutGUI(wx.Frame):
         menubar.Append(filemenu, "&File")
         self.SetMenuBar(menubar)
 
+        # Event bindings
         self.Bind(wx.EVT_CHOICE, self.update_interfaces)
         self.Bind(wx.EVT_BUTTON, self.on_clicked)
         self.Bind(wx.EVT_CLOSE, self.quit_app)
         self.Bind(wx.EVT_MENU, self.quit_app, m_exit)
         self.Bind(wx.EVT_MENU, self.on_about, m_about)
         self.Bind(wx.EVT_MENU, self.save_log_dialog, m_save)
+        # Subscribe to new log messages and updates to the midi ports
         pub.subscribe(self.add_msg, 'logUpdates')
         pub.subscribe(self.add_choices, 'availablePorts')
+        # Populate the midi ports dropdown
         self.midi_choices = None
         midi_functions.available_midi_ports()
+        # Initialize the log
         self.log_index = 0
         self.Show()
 
@@ -81,8 +92,8 @@ class MSCPrintoutGUI(wx.Frame):
         dlg.Destroy()  # Destroy pop-up when finished.
 
     def add_msg(self, msg):
-        # Add new items to
-        wx.CallAfter(self.Msg_Panel.InsertItem,self.log_index, msg[0])
+        # Add new items to log
+        wx.CallAfter(self.Msg_Panel.InsertItem, self.log_index, msg[0])
         wx.CallAfter(self.Msg_Panel.SetItem, self.log_index, 1, msg[1])
         wx.CallAfter(self.Msg_Panel.SetItem, self.log_index, 2, msg[2])
         wx.CallAfter(self.Msg_Panel.SetItem, self.log_index, 3, msg[3])
@@ -90,14 +101,15 @@ class MSCPrintoutGUI(wx.Frame):
         wx.CallAfter(self.Msg_Panel.SetItem, self.log_index, 5, msg[5])
         wx.CallAfter(self.Msg_Panel.SetItem, self.log_index, 6, msg[6])
         wx.CallAfter(self.Msg_Panel.EnsureVisible, self.log_index)
+        # Set the color of the most recently received log item and reset the others as required
         if self.log_index > 0:
-            wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, self.log_index, (16,32,240,100))
-            wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, (self.log_index - 1), wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW))
+            wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, self.log_index, (16, 32, 240, 100))
+            wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, (self.log_index - 1),
+                         wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW))
         self.log_index += 1
 
-
     def add_choices(self, choices):
-        print("Choices added")
+        # Add choices to the midi port selector dropdown
         self.Midi_Selector.Clear()
         self.Midi_Selector.Append("\n")
         self.Midi_Selector.Append(choices)
@@ -108,14 +120,19 @@ class MSCPrintoutGUI(wx.Frame):
         pub.sendMessage('chosenPort', port_to_open=chosen_port)
 
     def on_clicked(self, event):
+        # Respond to button pressed events
         btn = event.GetEventObject().GetLabel()
         if btn == "Clear MSC Log":
             self.Msg_Panel.DeleteAllItems()
             self.log_index = 0
         elif btn == "Refresh Interfaces":
             pub.sendMessage('refreshInterfaces')
+        elif btn == "Save Log As...":
+            self.save_log_dialog(None)
 
     def quit_app(self, event):
+        # Grab the current size and position of the app
+        # and update the config file.
         cur_size = self.GetTopLevelParent().GetSize()
         cur_pos = self.GetTopLevelParent().GetPosition()
         ini_path = config_functions.where_to_put_user_data()
@@ -125,11 +142,12 @@ class MSCPrintoutGUI(wx.Frame):
         sys.exit()
 
     def save_log_dialog(self, event):
+        # Build a save as dialog for the log
         with wx.FileDialog(self, "Save Log file", wildcard="CSV files (*.csv)|*.csv",
                            style=wx.FD_SAVE | wx.FD_OVERWRITE_PROMPT) as fileDialog:
 
             if fileDialog.ShowModal() == wx.ID_CANCEL:
-                return  # the user changed their mind
+                return
 
             # save the current contents in the file
             pathname = fileDialog.GetPath()
@@ -139,7 +157,6 @@ class MSCPrintoutGUI(wx.Frame):
             except IOError:
                 wx.LogError("Cannot save current data in file '%s'." % pathname)
 
-
     def save_log(self, file):
         item_count = self.Msg_Panel.GetItemCount()
         column_count = self.Msg_Panel.GetColumnCount()
@@ -147,6 +164,7 @@ class MSCPrintoutGUI(wx.Frame):
         try:
             # Header Row:
             file.write("Timestamp,Device ID,Command Format,Command Type,Cue Number,Cue List,Cue Path" + "\n")
+            # Write the MSC data, comma separated
             for i in range(item_count):
                 if i != 0:
                     file.write("\n")
@@ -157,6 +175,7 @@ class MSCPrintoutGUI(wx.Frame):
             file.close()
         except ValueError as e:
             print(e)
+
 
 if __name__ == "__main__":
     app = wx.App()
