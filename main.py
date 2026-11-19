@@ -10,9 +10,13 @@ __date__ = "$Date: 2024/11/16"
 from pubsub import pub
 import wx
 import sys
+from datetime import datetime
 import midi_functions
 import config_functions
 import settings
+
+HIGHLIGHTED_ROW_COLOUR = wx.Colour(16, 32, 240)
+MARKER_ROW_COLOUR = wx.Colour(240, 208, 0)
 
 
 class MSCPrintoutGUI(wx.Frame):
@@ -49,10 +53,14 @@ class MSCPrintoutGUI(wx.Frame):
 
         panel_sizer.Add(self.Msg_Panel, 1, wx.ALL | wx.EXPAND, 5)
         # Clear log button
-        button_grid = wx.GridSizer(1, 2, 10, 10)
+        button_grid = wx.GridSizer(1, 3, 7, 10)
         # Clear Contents button
         clear_contents = wx.Button(panel, label="Clear MSC Log")
         button_grid.Add(clear_contents, flag=wx.ALIGN_CENTER_HORIZONTAL)
+        # Drop Marker button
+        drop_marker = wx.Button(panel, label="Drop Marker")
+        drop_marker.Bind(wx.EVT_BUTTON, self.on_dropped_marker)
+        button_grid.Add(drop_marker, flag=wx.ALIGN_CENTER_HORIZONTAL)
         save_as_log = wx.Button(panel, label="Save Log As...")
         button_grid.Add(save_as_log, flag=wx.ALIGN_CENTER_HORIZONTAL)
         panel_sizer.Add(button_grid, 0, wx.ALL | wx.EXPAND, 5)
@@ -103,10 +111,25 @@ class MSCPrintoutGUI(wx.Frame):
         wx.CallAfter(self.Msg_Panel.EnsureVisible, self.log_index)
         # Set the color of the most recently received log item and reset the others as required
         if self.log_index > 0:
-            wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, self.log_index, (16, 32, 240, 100))
-            wx.CallAfter(self.Msg_Panel.SetItemBackgroundColour, (self.log_index - 1),
-                         wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW))
+            wx.CallAfter(
+                self.Msg_Panel.SetItemBackgroundColour,
+                self.log_index,
+                HIGHLIGHTED_ROW_COLOUR,
+            )
+            self.revert_previous_item_bg()
         self.log_index += 1
+
+    def revert_previous_item_bg(self):
+        if (
+            self.log_index > 0
+            and self.Msg_Panel.GetItemBackgroundColour(self.log_index - 1)
+            == HIGHLIGHTED_ROW_COLOUR
+        ):
+            wx.CallAfter(
+                self.Msg_Panel.SetItemBackgroundColour,
+                (self.log_index - 1),
+                wx.SystemSettings.GetColour(wx.SYS_COLOUR_3DDKSHADOW),
+            )
 
     def add_choices(self, choices):
         # Add choices to the midi port selector dropdown
@@ -136,6 +159,20 @@ class MSCPrintoutGUI(wx.Frame):
             pub.sendMessage('refreshInterfaces')
         elif btn == "Save Log As...":
             self.save_log_dialog(None)
+
+    def on_dropped_marker(self, _):
+        self.Msg_Panel.InsertItem(
+            self.log_index, datetime.now().strftime("%d-%b-%Y (%H:%M:%S)")
+        )
+        self.Msg_Panel.SetItem(self.log_index, 1, "Marker")
+        self.Msg_Panel.EnsureVisible(self.log_index)
+        self.Msg_Panel.SetItemBackgroundColour(
+            self.log_index,
+            MARKER_ROW_COLOUR,
+        )
+        wx.CallAfter(self.Msg_Panel.SetItemTextColour, self.log_index, wx.BLACK)
+        self.revert_previous_item_bg()
+        self.log_index += 1
 
     def quit_app(self, event):
         # Grab the current size and position of the app
